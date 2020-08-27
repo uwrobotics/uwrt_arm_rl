@@ -9,9 +9,12 @@ import math
 ############
 import os
 import sys
-ROOT_DIR = os.getcwd()
+
+ROOT_DIR = os.path.abspath("../")
 sys.path.append(ROOT_DIR)
 print("********* cwd {} *********".format(ROOT_DIR))
+
+URDF_DIR = "/urdf/uwrt_arm.urdf"
 
 ################################
 # init objects in pybullet
@@ -26,7 +29,7 @@ urdfRootPath=pybullet_data.getDataPath()
 tableUid = p.loadURDF(os.path.join(urdfRootPath, "table/table.urdf"), basePosition=[0.5,0,-0.65])
 
 # uwrt arm
-uwrtarmUid = p.loadURDF("/Users/akeaveny/Downloads/RL/UWRTArmGym/urdf/uwrt_arm.urdf", useFixedBase=True)
+uwrtarmUid = p.loadURDF(ROOT_DIR+URDF_DIR, useFixedBase=True)
 num_joints = p.getNumJoints(uwrtarmUid) - 1 ### fixed shoulder joint
 
 # home config

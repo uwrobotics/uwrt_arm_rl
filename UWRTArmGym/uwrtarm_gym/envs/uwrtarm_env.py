@@ -9,13 +9,16 @@ import numpy as np
 import random
 
 ############
-# int cwd
+# init cwd
 ############
 import os
 import sys
-ROOT_DIR = os.getcwd()
+
+ROOT_DIR = os.path.abspath("../")
 sys.path.append(ROOT_DIR)
 print("********* cwd {} *********".format(ROOT_DIR))
+
+URDF_DIR = "/urdf/uwrt_arm.urdf"
 
 class UWRTArmEnv(gym.Env):
     metadata = {'render.modes': ['human']}
@@ -128,11 +131,12 @@ class UWRTArmEnv(gym.Env):
         # uwrt arm
         ##############################
         # config
-        self.home_position = [0.3, 0.0, 0.8]
+        self.home_position = [0.4, 0.0, 0.4]
         self.home_orientation = p.getQuaternionFromEuler([-np.pi, 0, 0])
 
-        self.uwrtarmUid = p.loadURDF("/Users/akeaveny/Downloads/RL/UWRTArmGym/urdf/uwrt_arm.urdf", useFixedBase=True)
+        self.uwrtarmUid = p.loadURDF(ROOT_DIR + URDF_DIR, useFixedBase=True)
         self.num_joints = p.getNumJoints(self.uwrtarmUid) - 1  ### fixed shoulder joint
+        # p.resetBasePositionAndOrientation(self.uwrtarmUid, [0, 0, 0], [0, 0, 0, 1])
 
         ##############################
         # "keyboard"
