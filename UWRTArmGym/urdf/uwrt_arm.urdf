@@ -130,7 +130,7 @@
     <parent link="arm_forearm_link"/>
     <child link="arm_wrist_link"/>
     <origin rpy="0 0 0" xyz="0 0 0.366"/>
-    <axis xyz="0 0 1"/>
+    <axis xyz="1 0 0"/>
     <limit effort="75" lower="-2.35619449019" upper="2.35619449019" velocity="1.0"/>
   </joint>
   <!-- (LINK) FAKE WRIST

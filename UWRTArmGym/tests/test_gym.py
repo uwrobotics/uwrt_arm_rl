@@ -8,7 +8,7 @@ env.reset()
 
 for i_episode in range(20):
     observation = env.reset()
-    time.sleep(1)
+    # time.sleep(3)
     for t in range(1000):
         env.render()
         action = env.action_space.sample()

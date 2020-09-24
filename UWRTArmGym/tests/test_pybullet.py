@@ -33,23 +33,22 @@ uwrtarmUid = p.loadURDF(ROOT_DIR+URDF_DIR, useFixedBase=True)
 num_joints = p.getNumJoints(uwrtarmUid) - 1 ### fixed shoulder joint
 
 # home config
-homeposition = [0.3, 0.0, 0.8]
-homeorientation = p.getQuaternionFromEuler([-np.pi, 0, 0])
+homeposition = [0.4, 0.0, 0.8]
+homeorientation = p.getQuaternionFromEuler([0, np.pi/2, 0])
 
 ##############################
 # "keyboard"
 # cube === key on a keyboard
 ##############################
 p.setGravity(0,0,-10)
-objectorientation = p.getQuaternionFromEuler([np.pi, 0, 0])
-objectposition = [np.random.uniform(0.5, 0.7), np.random.uniform(-0.4, 0.4), np.random.uniform(0.5, 0.7)]
+objectorientation = p.getQuaternionFromEuler([0, np.pi/2, 0])
+# objectposition = [np.random.uniform(0.4, 0.4), np.random.uniform(0.4, 0.4), np.random.uniform(0.7, 0.7)]
+objectposition = [np.random.uniform(0.7, 0.7), np.random.uniform(0.15, 0.15), np.random.uniform(0.7, 0.7)]
 
-objectUid = p.loadURDF(os.path.join(urdfRootPath, "cube_small.urdf"), basePosition=objectposition,
-                       useFixedBase=True)
-
+objectUid = p.loadURDF(os.path.join(urdfRootPath, "cube_small.urdf"), basePosition=objectposition, baseOrientation=objectorientation, useFixedBase=True)
 
 # camera config
-p.resetDebugVisualizerCamera(cameraDistance=1.5, cameraYaw=0, cameraPitch=-40, cameraTargetPosition=[0.55,-0.35,0.2])
+p.resetDebugVisualizerCamera(cameraDistance=2, cameraYaw=75, cameraPitch=-40, cameraTargetPosition=[0.55, -0.35, 0.2])
 
 ################################
 #
@@ -69,8 +68,8 @@ while True:
     # home pos
     #################
 
-    state_robot = p.getLinkState(uwrtarmUid, num_joints-1)
-    jointposes = p.calculateInverseKinematics(uwrtarmUid, num_joints, homeposition, homeorientation)
+    state_robot = p.getLinkState(uwrtarmUid, num_joints)
+    jointposes = p.calculateInverseKinematics(uwrtarmUid, endEffectorLinkIndex=num_joints, targetPosition=homeposition, targetOrientation=homeorientation)
 
     if current_state == 0:
         p.setJointMotorControl2(uwrtarmUid, 0, p.POSITION_CONTROL, jointposes[0])
@@ -85,7 +84,8 @@ while True:
     #################
 
     state_robot = p.getLinkState(uwrtarmUid, num_joints)
-    jointposes = p.calculateInverseKinematics(uwrtarmUid, num_joints, objectposition, objectorientation)
+    jointposes = p.calculateInverseKinematics(uwrtarmUid, endEffectorLinkIndex=num_joints, targetPosition=objectposition)
+    # jointposes = p.calculateInverseKinematics(uwrtarmUid, endEffectorLinkIndex=num_joints, targetPosition=objectposition, targetOrientation=objectorientation)
 
     if current_state == 1:
         p.setJointMotorControl2(uwrtarmUid, 0, p.POSITION_CONTROL, jointposes[0])
@@ -99,16 +99,16 @@ while True:
     # return to home pos
     #####################
 
-    state_robot = p.getLinkState(uwrtarmUid, num_joints)
-    jointposes = p.calculateInverseKinematics(uwrtarmUid, num_joints, homeposition, homeorientation)
-
-    if current_state == 2:
-        p.setJointMotorControl2(uwrtarmUid, 0, p.POSITION_CONTROL, jointposes[0])
-        p.setJointMotorControl2(uwrtarmUid, 1, p.POSITION_CONTROL, jointposes[1])
-        # p.setJointMotorControl2(uwrtarmUid, 2, p.POSITION_CONTROL, jointposes[2]) ### fixed shoulder joint
-        p.setJointMotorControl2(uwrtarmUid, 3, p.POSITION_CONTROL, jointposes[2])
-        p.setJointMotorControl2(uwrtarmUid, 4, p.POSITION_CONTROL, jointposes[3])
-        p.setJointMotorControl2(uwrtarmUid, 5, p.POSITION_CONTROL, jointposes[4])
+    # state_robot = p.getLinkState(uwrtarmUid, num_joints)
+    # jointposes = p.calculateInverseKinematics(uwrtarmUid, endEffectorLinkIndex=num_joints, targetPosition=homeposition, targetOrientation=homeorientation)
+    #
+    # if current_state == 2:
+    #     p.setJointMotorControl2(uwrtarmUid, 0, p.POSITION_CONTROL, jointposes[0])
+    #     p.setJointMotorControl2(uwrtarmUid, 1, p.POSITION_CONTROL, jointposes[1])
+    #     # p.setJointMotorControl2(uwrtarmUid, 2, p.POSITION_CONTROL, jointposes[2]) ### fixed shoulder joint
+    #     p.setJointMotorControl2(uwrtarmUid, 3, p.POSITION_CONTROL, jointposes[2])
+    #     p.setJointMotorControl2(uwrtarmUid, 4, p.POSITION_CONTROL, jointposes[3])
+    #     p.setJointMotorControl2(uwrtarmUid, 5, p.POSITION_CONTROL, jointposes[4])
 
     if state_t >state_durations[current_state]:
         current_state += 1
