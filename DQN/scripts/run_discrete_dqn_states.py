@@ -255,7 +255,7 @@ def run_training_loop(env, policy_net, target_net, optimizer,
 def main():
 
     ####################
-    # ENV CONFIG
+    # ENV CONFIGw
     ####################
     env = gym.make('UWRTArm-v0', timesteps=TIMESTEPS, discrete=True, render=False)
     env.cid = p.connect(p.DIRECT)
