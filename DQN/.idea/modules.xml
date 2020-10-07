@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$USER_HOME$/catkin_ws/src/openai_ros/openai_ros/src/openai_ros/.idea/openai_ros.iml" filepath="$USER_HOME$/catkin_ws/src/openai_ros/openai_ros/src/openai_ros/.idea/openai_ros.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/python.iml" filepath="$PROJECT_DIR$/.idea/python.iml" />
+    </modules>
+  </component>
+</project>
