@@ -83,7 +83,7 @@ def get_discrete_action(env, move_towards_target, continous_action, observation)
         sample_action[0:3] = np.array(env.keyboard_position) - np.squeeze(observation.cpu().numpy())
         discrete_action = sample_action[0:3]
     else:
-        dv = 1 # see uwrtarm_env.py
+        dv = 1 # see test_uwrt_arm_env.py
         dx = [-dv, dv, 0, 0, 0, 0][continous_action]
         dy = [0, 0, -dv, dv, 0, 0][continous_action]
         dz = [0, 0, 0, 0, -dv, dv][continous_action]

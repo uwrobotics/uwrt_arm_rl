@@ -41,10 +41,10 @@ import gym
 import uwrtarm_gym
 from gym import spaces
 
-from algorithms.DQN_states import DQN
-from utils.ReplayMemory import ReplayMemory
-from utils.SelectAction import select_action
-from utils.OptimizeModel import optimize_model
+from DQN.algorithms.DQN_states import DQN
+from DQN.utils.ReplayMemory import ReplayMemory
+from DQN.utils.SelectAction import select_action
+from DQN.utils.OptimizeModel import optimize_model
 
 def get_discrete_action(env, move_towards_target, continous_action, observation):
 
@@ -64,7 +64,7 @@ def get_discrete_action(env, move_towards_target, continous_action, observation)
         sample_action[0:3] = np.array(env.keyboard_position) - np.squeeze(observation.cpu().numpy())
         discrete_action = sample_action[0:3]
     else:
-        dv = 1 # see uwrtarm_env.py
+        dv = 1 # see test_uwrt_arm_env.py
         dx = [-dv, dv, 0, 0, 0, 0][continous_action]
         dy = [0, 0, -dv, dv, 0, 0][continous_action]
         dz = [0, 0, 0, 0, -dv, dv][continous_action]
@@ -338,7 +338,7 @@ if __name__ == '__main__':
     #########################
     # HYPER PARAMS
     #########################
-    EPISODES = int(1e3)
+    EPISODES = int(25e3)
     TIMESTEPS = int(2e3)
 
     LEARNING_RATE = 1e-3
@@ -361,9 +361,13 @@ if __name__ == '__main__':
     #########################
     weights = sorted(glob.glob(ROOT_DIR + '/DQN/trained_models/policy_dqn_states_*'))
     num_weights = len(weights)
+
+    # TODO: clean this up!
+    last_pt_file = glob.glob(ROOT_DIR + '/DQN/trained_models/policy_dqn_states_' + str(num_weights - 1) + '*')[0]
+
     if num_weights >= 1:
         print("*** Loading Pretrained Weights ***")
-        SAVED_PATH = ROOT_DIR + "/DQN/trained_models/policy_dqn_states_" + np.str(num_weights - 1) + "_" + np.str(EPISODES) + ".pt"
+        SAVED_PATH = ROOT_DIR + "/DQN/trained_models/policy_dqn_states_" + np.str(num_weights - 1) + "_" + np.str(1000) + ".pt"
         PATH = ROOT_DIR + "/DQN/trained_models/policy_dqn_states_" + np.str(num_weights) + "_" + np.str(EPISODES) + ".pt"
         LOAD_PRETRAINED_WEIGHTS = True
     else:
