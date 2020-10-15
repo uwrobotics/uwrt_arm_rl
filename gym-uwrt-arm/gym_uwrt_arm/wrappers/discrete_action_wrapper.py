@@ -7,7 +7,7 @@ from gym import spaces
 from gym_uwrt_arm.envs.uwrt_arm_env import UWRTArmEnv
 
 
-class MultiDiscreteToContinuousActionWrapper(gym.ActionWrapper):
+class MultiDiscreteToContinuousDictActionWrapper(gym.ActionWrapper):
     def __init__(self, env):
         super().__init__(env)
         assert (isinstance(env, UWRTArmEnv), 'Wrapped Env must be of type UWRTArmEnv')

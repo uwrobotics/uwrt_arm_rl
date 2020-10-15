@@ -2,11 +2,11 @@ import pprint
 
 import gym
 import numpy as np
+from gym.wrappers import FlattenObservation
 
 # noinspection PyUnresolvedReferences
 import gym_uwrt_arm.envs.uwrt_arm_env
-
-from gym_uwrt_arm.wrappers.discrete_action_wrapper import MultiDiscreteToContinuousActionWrapper
+from gym_uwrt_arm.wrappers.discrete_action_wrapper import MultiDiscreteToContinuousDictActionWrapper
 
 
 class TestClass:
@@ -26,6 +26,8 @@ class TestClass:
             for sim_step in range(self.MAX_STEPS):
                 action = env.action_space.sample()
                 observation, reward, done, info = env.step(action)
+
+                # unflattened_observation = gym.spaces.unflatten(env.env.observation_space, initial_observation)
 
                 print()
                 print('Action:')
@@ -50,8 +52,15 @@ class TestClass:
         self.__run_test(env)
         env.close()
 
-    def test_discrete_wrapper_env(self):
-        env = MultiDiscreteToContinuousActionWrapper(
+    def test_discrete_action_wrapper_env(self):
+        env = MultiDiscreteToContinuousDictActionWrapper(
+            gym.make('uwrt-arm-v0', key_position=self.KEY_POSITION, key_orientation=self.KEY_ORIENTATION,
+                     max_steps=self.MAX_STEPS, enable_render=True))
+        self.__run_test(env)
+        env.close()
+
+    def test_flatten_observation_wrapper_env(self):
+        env = FlattenObservation(
             gym.make('uwrt-arm-v0', key_position=self.KEY_POSITION, key_orientation=self.KEY_ORIENTATION,
                      max_steps=self.MAX_STEPS, enable_render=True))
         self.__run_test(env)
