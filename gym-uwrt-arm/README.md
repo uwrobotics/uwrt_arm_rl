@@ -13,9 +13,9 @@ This work was originally based on the following tutorial:
 To use the gym environments provided in this package, you must first install it:
 ```
 cd <Repo Root>
-conda develop -e gym-uwrt-arm
+conda develop gym-uwrt-arm
 ```
-
+To uninstall, you can run `conda develop -u gym-uwrt-arm`
 ## Tests
 1. python test_pybullet
 - This test spawns a 'key' represented by a cube and explores IK in pybullet
