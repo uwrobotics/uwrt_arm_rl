@@ -3,6 +3,7 @@ import pprint
 import gym
 import numpy as np
 from gym.wrappers import FlattenObservation
+from stable_baselines3.common import env_checker
 
 # noinspection PyUnresolvedReferences
 import gym_uwrt_arm.envs.uwrt_arm_env
@@ -27,8 +28,6 @@ class TestClass:
                 action = env.action_space.sample()
                 observation, reward, done, info = env.step(action)
 
-                # unflattened_observation = gym.spaces.unflatten(env.env.observation_space, initial_observation)
-
                 print()
                 print('Action:')
                 pp.pprint(action)
@@ -50,18 +49,35 @@ class TestClass:
         env = gym.make('uwrt-arm-v0', key_position=self.KEY_POSITION, key_orientation=self.KEY_ORIENTATION,
                        max_steps=self.MAX_STEPS, enable_render=True)
         self.__run_test(env)
-        env.close()
+
+        # Implicitly closes the environment
+        env_checker.check_env(env=env, warn=True, skip_render_check=False)
 
     def test_discrete_action_wrapper_env(self):
         env = MultiDiscreteToContinuousDictActionWrapper(
             gym.make('uwrt-arm-v0', key_position=self.KEY_POSITION, key_orientation=self.KEY_ORIENTATION,
                      max_steps=self.MAX_STEPS, enable_render=True))
         self.__run_test(env)
-        env.close()
+
+        # Implicitly closes the environment
+        env_checker.check_env(env=env, warn=True, skip_render_check=False)
 
     def test_flatten_observation_wrapper_env(self):
         env = FlattenObservation(
             gym.make('uwrt-arm-v0', key_position=self.KEY_POSITION, key_orientation=self.KEY_ORIENTATION,
                      max_steps=self.MAX_STEPS, enable_render=True))
         self.__run_test(env)
-        env.close()
+
+        # TODO: Broken because of dict action. fix upstream in sb3
+        # Implicitly closes the environment
+        env_checker.check_env(env=env, warn=True, skip_render_check=False)
+
+    def test_gym_api_compliance_for_dqn_wrapper_setup(self):
+        env = FlattenObservation(MultiDiscreteToContinuousDictActionWrapper(
+            gym.make('uwrt-arm-v0', key_position=self.KEY_POSITION, key_orientation=self.KEY_ORIENTATION,
+                     max_steps=self.MAX_STEPS, enable_render=True)))
+        # self.__run_test(env)
+
+        # TODO: Broken because of dict action. fix upstream in sb3
+        # Implicitly closes the environment
+        env_checker.check_env(env=env, warn=True, skip_render_check=False)

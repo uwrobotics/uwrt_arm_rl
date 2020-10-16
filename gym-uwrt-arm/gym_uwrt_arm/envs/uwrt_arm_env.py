@@ -17,7 +17,7 @@ class UWRTArmEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
     # Arm Constants
-    ARM_URDF_URL = 'https://raw.githubusercontent.com/uwrobotics/uwrt_arm_rl/DQN/UWRTArmGym/urdf/uwrt_arm.urdf' # TODO: Change to specific commit on master of uwrt_mars_rover. Warn on outdated
+    ARM_URDF_URL = 'https://raw.githubusercontent.com/uwrobotics/uwrt_arm_rl/DQN/UWRTArmGym/urdf/uwrt_arm.urdf'  # TODO: Change to specific commit on master of uwrt_mars_rover. Warn on outdated
     ARM_URDF_FILE_NAME = 'uwrt_arm.urdf'
     ALLEN_KEY_LENGTH = 0.10
 
@@ -74,7 +74,8 @@ class UWRTArmEnv(gym.Env):
 
         # All joint limit switch states are either NOT_TRIGGERED[0], LOWER_TRIGGERED[1], UPPER_TRIGGERED[2]
         # The exception is roll which only has NOT_TRIGGERED[0]
-        joint_limit_switch_dims = np.concatenate((np.full(num_joints - 1, 3), np.array([1]))) # TODO: this is wrong. wrist joints flipped
+        joint_limit_switch_dims = np.concatenate(
+            (np.full(num_joints - 1, 3), np.array([1])))  # TODO: this is wrong. wrist joints flipped
 
         # TODO: Load mechanical limits from something (ex. pull info from config in uwrt_mars_rover thru git)
         self.observation_space = spaces.Dict({
@@ -85,7 +86,7 @@ class UWRTArmEnv(gym.Env):
                     'orientation': spaces.Box(low=np.full(4, -np.inf), high=np.full(4, np.inf), shape=(4,),
                                               dtype=np.float32),
                 }),
-                'initial_distance_to_target': spaces.Box(low=0, high=np.inf, shape=(1,), dtype=np.float32),
+                'initial_distance_to_target': spaces.Box(low=0, high=np.inf, shape=(), dtype=np.float32),
                 'initial_orientation_difference': spaces.Box(low=np.full(4, -np.inf), high=np.full(4, np.inf),
                                                              shape=(4,), dtype=np.float32)
             }),
@@ -112,7 +113,7 @@ class UWRTArmEnv(gym.Env):
                     'position': self.init_options.key_position,
                     'orientation': self.init_options.key_orientation,
                 },
-                'initial_distance_to_target': np.inf,
+                'initial_distance_to_target': np.array(np.inf),
                 'initial_orientation_difference': np.full(4, np.inf),
             },
             'joint_sensors': {
@@ -168,16 +169,19 @@ class UWRTArmEnv(gym.Env):
         self.info['arm']['joint_limits'] = [pb.getJointInfo(self.py_bullet_info.arm_uid, joint_index)[8:10]
                                             for joint_index in range(self.info['arm']['num_joints'])]
 
-        # TODO: Randomize arm starting position
+        # TODO: Randomize arm starting configuration
         # TODO: Calculate Claw link pose from desired allen key tip pose
         # claw_link_position, claw_link_orientation = self.__get_claw_link_pose_from_allen_key_tip_pose(
         #     allen_key_tip_position_world_frame=[1, 0, 0], # [0.1, 0.0, 0.8]
         #     allen_key_tip_orientation_world_frame=pb.getQuaternionFromEuler([0, np.pi / 2, 0]))
 
+        # TODO: limit to valid configurations using nullspace?
         joint_home_poses = pb.calculateInverseKinematics(self.py_bullet_info.arm_uid,
                                                          endEffectorLinkIndex=self.info['arm']['num_joints'] - 1,
-                                                         targetPosition=[0.1, 0.0, 0.8],
-                                                         targetOrientation=pb.getQuaternionFromEuler([0, np.pi / 2, 0]))
+                                                         targetPosition=[0.3, 0.0, 0.8],
+                                                         targetOrientation=pb.getQuaternionFromEuler(
+                                                             [0, np.pi / 3.5, 0])
+                                                         )
 
         # Move joints to starting position
         for joint_index in range(self.info['arm']['num_joints']):
@@ -299,12 +303,12 @@ class UWRTArmEnv(gym.Env):
             'orientation': allen_key_tip_orientation_world_frame,
         }
 
-        distance_to_target = np.linalg.norm(
-            np.subtract(allen_key_tip_position_world_frame,
-                        self.observation['goal']['key_pose_world_frame']['position']))
-        difference_quaternion = pb.getDifferenceQuaternion(allen_key_tip_orientation_world_frame,
-                                                           self.observation['goal']['key_pose_world_frame'][
-                                                               'orientation'])
+        distance_to_target = np.array(np.linalg.norm(
+            allen_key_tip_position_world_frame - self.observation['goal']['key_pose_world_frame']['position']),
+            dtype=np.float32)
+        difference_quaternion = np.array(pb.getDifferenceQuaternion(allen_key_tip_orientation_world_frame,
+                                                                    self.observation['goal']['key_pose_world_frame'][
+                                                                        'orientation']), dtype=np.float32)
 
         self.info['goal']['distance_to_target'] = distance_to_target
         self.info['goal']['orientation_difference'] = difference_quaternion
@@ -312,7 +316,7 @@ class UWRTArmEnv(gym.Env):
         if reset:
             self.observation['goal']['initial_distance_to_target'] = self.info['goal']['distance_to_target']
             self.observation['goal']['initial_orientation_difference'] = self.info['goal']['orientation_difference']
-            
+
             self.info['sim']['steps_executed'] = 0
             self.info['sim']['seconds_executed'] = 0
         else:
