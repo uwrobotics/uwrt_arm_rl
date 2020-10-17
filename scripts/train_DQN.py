@@ -58,6 +58,12 @@ def _load_latest_model(training_env):
         print('Could not find saved models. Creating new model!')
         model = DQN(MlpPolicy, env=training_env, verbose=1, tensorboard_log=str(SAVE_PATH / config.TENSORBOARD_LOG_DIR))
 
+    # Clear all unused checkpoints
+    if last_modified_checkpoint_file_mtime:
+        for file_path in checkpoint_files:
+            if file_path != last_modified_checkpoint_file_path:
+                os.remove(file_path)
+
     return model
 
 
