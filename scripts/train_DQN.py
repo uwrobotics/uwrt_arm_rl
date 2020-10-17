@@ -45,11 +45,11 @@ def _load_latest_model(training_env):
     else:
         choice = 'new_model'
 
-    if choice is 'saved_model':
+    if choice == 'saved_model':
         print(f'Loading Checkpoint from {saved_model_file_path}')
         model = DQN.load(path=saved_model_file_path, env=training_env, verbose=1,
                          tensorboard_log=str(SAVE_PATH / config.TENSORBOARD_LOG_DIR))
-    elif choice is 'saved_checkpoint':
+    elif choice == 'saved_checkpoint':
         print(f'Loading Saved Model from {last_modified_checkpoint_file_path}')
         model = DQN.load(path=last_modified_checkpoint_file_path, env=training_env, verbose=1,
                          tensorboard_log=str(SAVE_PATH / config.TENSORBOARD_LOG_DIR))
