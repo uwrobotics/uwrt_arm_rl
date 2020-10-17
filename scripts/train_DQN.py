@@ -5,7 +5,8 @@ import gym
 import numpy as np
 from gym.wrappers import FlattenObservation
 from stable_baselines3 import DQN
-from stable_baselines3.common.callbacks import CallbackList, CheckpointCallback, EvalCallback
+from stable_baselines3.common.callbacks import CallbackList, CheckpointCallback
+from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.dqn import MlpPolicy
 
 import config
@@ -55,29 +56,51 @@ def _load_latest_model(training_env):
                          tensorboard_log=str(SAVE_PATH / config.TENSORBOARD_LOG_DIR))
     else:
         print('Could not find saved models. Creating new model!')
-        model = DQN(MlpPolicy, training_env, verbose=1, tensorboard_log=str(SAVE_PATH / config.TENSORBOARD_LOG_DIR))
+        model = DQN(MlpPolicy, env=training_env, verbose=1, tensorboard_log=str(SAVE_PATH / config.TENSORBOARD_LOG_DIR))
 
     return model
 
 
+def _update_model_parameters(model):
+    # DQN specific
+    model.gamma = 0.99  # Discount factor
+
+    # Model Training
+    model.train_freq = 1  # minimum number of env time steps between model training
+    model.n_episodes_rollout = -1  # minimum number of episodes between model training
+    model.gradient_steps = -1  # number of gradient steps to execute. -1 matches the number of steps in the rollout
+    model.learning_rate = 0.01  # learning rate
+
+    # Target network syncing
+    model.target_update_interval = MAX_STEPS_PER_EPISODE * 5  # number of env time steps between target network updates
+
+    # Exploration
+    model.exploration_fraction = 0.75  # fraction of entire training period over which the exploration rate is reduced
+    model.exploration_initial_eps = 1.0  # initial value of random action probability
+    model.exploration_final_eps = 0.1  # final value of random action probability
+
+
 # TODO: normalize rewards https://stable-baselines3.readthedocs.io/en/master/guide/examples.html#pybullet-normalizing-input-features
 def main():
-    training_env = FlattenObservation(DiscreteToContinuousDictActionWrapper(
+    training_env = Monitor(FlattenObservation(DiscreteToContinuousDictActionWrapper(
         gym.make(GYM_ID, key_position=KEY_POSITION, key_orientation=KEY_ORIENTATION,
-                 max_steps=MAX_STEPS_PER_EPISODE, enable_render=False)))
+                 max_steps=MAX_STEPS_PER_EPISODE, enable_render=False))))
 
     evaluation_env = FlattenObservation(DiscreteToContinuousDictActionWrapper(
         gym.make(GYM_ID, key_position=KEY_POSITION, key_orientation=KEY_ORIENTATION,
                  max_steps=MAX_STEPS_PER_EPISODE, enable_render=False)))
 
     model = _load_latest_model(training_env=training_env)
+    _update_model_parameters(model)
 
     checkpoint_callback = CheckpointCallback(save_freq=10, save_path=str(SAVE_PATH / config.CHECKPOINTS_DIR),
                                              name_prefix=f'{GYM_ID}-dqn-trained-model')
-    evaluation_callback = EvalCallback(eval_env=evaluation_env,
-                                       best_model_save_path=str(SAVE_PATH / config.BEST_MODEL_SAVE_DIR),
-                                       log_path=str(SAVE_PATH / config.BEST_MODEL_LOG_DIR), eval_freq=50)
-    dqn_callbacks = CallbackList([checkpoint_callback, evaluation_callback])
+
+    # TODO: tensorboard not getting updated when evalcallback is used
+    # evaluation_callback = EvalCallback(eval_env=evaluation_env,
+    #                                    best_model_save_path=str(SAVE_PATH / config.BEST_MODEL_SAVE_DIR),
+    #                                    log_path=str(SAVE_PATH / config.BEST_MODEL_LOG_DIR), eval_freq=50)
+    dqn_callbacks = CallbackList([checkpoint_callback])
 
     model.learn(total_timesteps=TOTAL_TRAINING_ENV_STEPS, callback=dqn_callbacks)
     model.save(path=SAVE_PATH / f'{GYM_ID}-dqn-trained-model')
@@ -89,11 +112,19 @@ def main():
 if __name__ == '__main__':
     GYM_ID = 'uwrt-arm-v0'
 
-    MAX_STEPS_PER_EPISODE = 5000
+    MAX_STEPS_PER_EPISODE = 3000 # 3000 steps * (1/240) second/step = 12.5 seconds/episode max
     KEY_POSITION = np.array([0.6, 0.6, 0.6])
     KEY_ORIENTATION = np.array([0, 0, 0, 1])
 
-    TOTAL_TRAINING_ENV_STEPS = MAX_STEPS_PER_EPISODE * 60 * 8
+    DESIRED_TRAINING_TIME_HOURS = 24
+    DESIRED_TRAINING_TIME_MINS = DESIRED_TRAINING_TIME_HOURS * 60
+    ESTIMATED_STEPS_PER_MIN_1080TI = 53000
+
+    TOTAL_TRAINING_ENV_STEPS = DESIRED_TRAINING_TIME_MINS * ESTIMATED_STEPS_PER_MIN_1080TI
+
+    NUM_TRAINING_EPISODES = TOTAL_TRAINING_ENV_STEPS // MAX_STEPS_PER_EPISODE
+    print(f'Beginning to train for about {NUM_TRAINING_EPISODES} episodes ({TOTAL_TRAINING_ENV_STEPS} time steps)')
+
     SAVE_PATH = config.DQN_BASE_SAVE_PATH
 
     main()
