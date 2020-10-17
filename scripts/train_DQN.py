@@ -93,13 +93,15 @@ def main():
     model = _load_latest_model(training_env=training_env)
     _update_model_parameters(model)
 
-    checkpoint_callback = CheckpointCallback(save_freq=10, save_path=str(SAVE_PATH / config.CHECKPOINTS_DIR),
+    checkpoint_callback = CheckpointCallback(save_freq=ESTIMATED_STEPS_PER_MIN_1080TI * 10,
+                                             save_path=str(SAVE_PATH / config.CHECKPOINTS_DIR),
                                              name_prefix=f'{GYM_ID}-dqn-trained-model')
 
     # TODO: tensorboard not getting updated when evalcallback is used
     # evaluation_callback = EvalCallback(eval_env=evaluation_env,
     #                                    best_model_save_path=str(SAVE_PATH / config.BEST_MODEL_SAVE_DIR),
-    #                                    log_path=str(SAVE_PATH / config.BEST_MODEL_LOG_DIR), eval_freq=50)
+    #                                    log_path=str(SAVE_PATH / config.BEST_MODEL_LOG_DIR),
+    #                                    eval_freq=ESTIMATED_STEPS_PER_MIN_1080TI * 10)
     dqn_callbacks = CallbackList([checkpoint_callback])
 
     model.learn(total_timesteps=TOTAL_TRAINING_ENV_STEPS, callback=dqn_callbacks)
@@ -112,7 +114,7 @@ def main():
 if __name__ == '__main__':
     GYM_ID = 'uwrt-arm-v0'
 
-    MAX_STEPS_PER_EPISODE = 3000 # 3000 steps * (1/240) second/step = 12.5 seconds/episode max
+    MAX_STEPS_PER_EPISODE = 3000  # 3000 steps * (1/240) second/step = 12.5 seconds/episode max
     KEY_POSITION = np.array([0.6, 0.6, 0.6])
     KEY_ORIENTATION = np.array([0, 0, 0, 1])
 
