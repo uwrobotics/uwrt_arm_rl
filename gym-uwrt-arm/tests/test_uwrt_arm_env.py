@@ -7,7 +7,7 @@ from stable_baselines3.common import env_checker
 
 # noinspection PyUnresolvedReferences
 import gym_uwrt_arm.envs.uwrt_arm_env
-from gym_uwrt_arm.wrappers.discrete_action_wrapper import MultiDiscreteToContinuousDictActionWrapper
+from gym_uwrt_arm.wrappers.discrete_to_continuous_dict_action_wrapper import DiscreteToContinuousDictActionWrapper
 
 
 class TestClass:
@@ -54,7 +54,7 @@ class TestClass:
         env_checker.check_env(env=env, warn=True, skip_render_check=False)
 
     def test_discrete_action_wrapper_env(self):
-        env = MultiDiscreteToContinuousDictActionWrapper(
+        env = DiscreteToContinuousDictActionWrapper(
             gym.make('uwrt-arm-v0', key_position=self.KEY_POSITION, key_orientation=self.KEY_ORIENTATION,
                      max_steps=self.MAX_STEPS, enable_render=True))
         self.__run_test(env)
@@ -73,7 +73,7 @@ class TestClass:
         env_checker.check_env(env=env, warn=True, skip_render_check=False)
 
     def test_gym_api_compliance_for_dqn_wrapper_setup(self):
-        env = FlattenObservation(MultiDiscreteToContinuousDictActionWrapper(
+        env = FlattenObservation(DiscreteToContinuousDictActionWrapper(
             gym.make('uwrt-arm-v0', key_position=self.KEY_POSITION, key_orientation=self.KEY_ORIENTATION,
                      max_steps=self.MAX_STEPS, enable_render=True)))
         # self.__run_test(env)

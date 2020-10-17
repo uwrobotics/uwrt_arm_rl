@@ -157,6 +157,9 @@ class UWRTArmEnv(gym.Env):
             # Set default camera viewing angle
             pb.resetDebugVisualizerCamera(cameraDistance=1.5, cameraYaw=0, cameraPitch=-40,
                                           cameraTargetPosition=[0.55, -0.35, 0.2])
+            pb.configureDebugVisualizer(pb.COV_ENABLE_SEGMENTATION_MARK_PREVIEW, 0)
+            pb.configureDebugVisualizer(pb.COV_ENABLE_DEPTH_BUFFER_PREVIEW, 0)
+            pb.configureDebugVisualizer(pb.COV_ENABLE_RGB_BUFFER_PREVIEW, 0)
 
     def __spawn_uwrt_arm(self):
         self.py_bullet_info.arm_uid = pb.loadURDF(
