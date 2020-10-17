@@ -1,4 +1,4 @@
-name: uwrt_arm_rl_2
+name: uwrt_arm_rl_3_7
 channels:
   - anaconda
   - pytorch
@@ -116,7 +116,7 @@ dependencies:
   - pyqt=5.12.3=py38ha8c2ead_4
   - pysocks=1.7.1=py38h924ce5b_2
   - pytest=6.1.1=py38h32f6830_1
-  - python=3.8.6=h852b56e_0_cpython
+  - python=3.7
   - python-dateutil=2.8.1=py_0
   - python_abi=3.8=1_cp38
   - pytorch=1.6.0=py3.8_cuda10.2.89_cudnn7.6.5_0
@@ -152,4 +152,4 @@ dependencies:
     - pyqtchart==5.12
     - pyqtwebengine==5.12.1
     - stable-baselines3==0.9.0
-prefix: /home/wmmc88/anaconda3/envs/uwrt_arm_rl_2
+prefix: /home/wmmc88/anaconda3/envs/uwrt_arm_rl_3_7
