@@ -96,6 +96,7 @@ def main():
         gym.make(GYM_ID, key_position=KEY_POSITION, key_orientation=KEY_ORIENTATION,
                  max_steps=MAX_STEPS_PER_EPISODE, enable_render=False)))
 
+    # TODO: add tensorboard logs for episode reward, mean episode reward and mean action reward
     model = _load_latest_model(training_env=training_env)
     _update_model_parameters(model)
 
