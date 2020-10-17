@@ -72,13 +72,13 @@ def _update_model_parameters(model):
     model.gamma = 0.99  # Discount factor
 
     # Model Training
-    model.train_freq = 1  # minimum number of env time steps between model training
+    model.train_freq = 5  # minimum number of env time steps between model training
     model.n_episodes_rollout = -1  # minimum number of episodes between model training
-    model.gradient_steps = -1  # number of gradient steps to execute. -1 matches the number of steps in the rollout
-    model.learning_rate = 0.01  # learning rate
+    model.gradient_steps = 1  # number of gradient steps to execute. -1 matches the number of steps in the rollout
+    model.learning_rate = 0.001  # learning rate
 
     # Target network syncing
-    model.target_update_interval = MAX_STEPS_PER_EPISODE * 5  # number of env time steps between target network updates
+    model.target_update_interval = 20000  # number of env time steps between target network updates
 
     # Exploration
     model.exploration_fraction = 0.75  # fraction of entire training period over which the exploration rate is reduced
@@ -112,6 +112,7 @@ def main():
     dqn_callbacks = CallbackList([checkpoint_callback])
 
     model.learn(total_timesteps=TOTAL_TRAINING_ENV_STEPS, callback=dqn_callbacks)
+    # TODO: autosave on KEYBOARD_INTERRUPT
     model.save(path=SAVE_PATH / f'{GYM_ID}-dqn-trained-model')
 
     training_env.close()
@@ -119,21 +120,38 @@ def main():
 
 
 if __name__ == '__main__':
+    # Env params
     GYM_ID = 'uwrt-arm-v0'
-
-    MAX_STEPS_PER_EPISODE = 3000  # 3000 steps * (1/240) second/step = 12.5 seconds/episode max
     KEY_POSITION = np.array([0.6, 0.6, 0.6])
     KEY_ORIENTATION = np.array([0, 0, 0, 1])
 
+    # Training params
+    MAX_SIM_SECONDS_PER_EPISODE = 10
     DESIRED_TRAINING_TIME_HOURS = 24
-    DESIRED_TRAINING_TIME_MINS = DESIRED_TRAINING_TIME_HOURS * 60
-    ESTIMATED_STEPS_PER_MIN_1080TI = 53000
 
+    # System params
+    ESTIMATED_STEPS_PER_SECOND_1080TI = 600
+
+    # Other params
+    SAVE_PATH = config.DQN_BASE_SAVE_PATH
+
+    '''
+    Calculate max sim steps per episode from desired max episode sim time
+    '''
+    # TODO: remove constants here:
+    PYBULLET_STEPS_PER_ENV_STEP = 3  # This is based on a desired_sim_step_duration of 1/100s (100hz control loop)
+    PYBULLET_SECONDS_PER_PYBULLET_STEP = 1 / 240
+
+    MAX_STEPS_PER_EPISODE = MAX_SIM_SECONDS_PER_EPISODE / PYBULLET_SECONDS_PER_PYBULLET_STEP / PYBULLET_STEPS_PER_ENV_STEP
+
+    '''
+    Calculate env steps from desired training time
+    '''
+    DESIRED_TRAINING_TIME_MINS = DESIRED_TRAINING_TIME_HOURS * 60
+    ESTIMATED_STEPS_PER_MIN_1080TI = ESTIMATED_STEPS_PER_SECOND_1080TI * 60
     TOTAL_TRAINING_ENV_STEPS = DESIRED_TRAINING_TIME_MINS * ESTIMATED_STEPS_PER_MIN_1080TI
 
     NUM_TRAINING_EPISODES = TOTAL_TRAINING_ENV_STEPS // MAX_STEPS_PER_EPISODE
     print(f'Beginning to train for about {NUM_TRAINING_EPISODES} episodes ({TOTAL_TRAINING_ENV_STEPS} time steps)')
-
-    SAVE_PATH = config.DQN_BASE_SAVE_PATH
 
     main()
