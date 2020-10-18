@@ -47,16 +47,20 @@ def _load_latest_model(training_env):
         choice = 'new_model'
 
     if choice == 'saved_model':
-        print(f'Loading Checkpoint from {saved_model_file_path}')
+        print(f'Loading Saved Model from {saved_model_file_path}')
         model = DQN.load(path=saved_model_file_path, env=training_env, verbose=1,
                          tensorboard_log=str(SAVE_PATH / config.TENSORBOARD_LOG_DIR))
     elif choice == 'saved_checkpoint':
-        print(f'Loading Saved Model from {last_modified_checkpoint_file_path}')
+        print(f'Loading Checkpoint from {last_modified_checkpoint_file_path}')
         model = DQN.load(path=last_modified_checkpoint_file_path, env=training_env, verbose=1,
                          tensorboard_log=str(SAVE_PATH / config.TENSORBOARD_LOG_DIR))
     else:
         print('Could not find saved models. Creating new model!')
-        model = DQN(MlpPolicy, env=training_env, verbose=1, tensorboard_log=str(SAVE_PATH / config.TENSORBOARD_LOG_DIR))
+        model = DQN(MlpPolicy, env=training_env, verbose=1, tensorboard_log=str(SAVE_PATH / config.TENSORBOARD_LOG_DIR),
+                    gamma=GAMMA, train_freq=TRAIN_FREQ, n_episodes_rollout=N_EPISODES_ROLLOUT,
+                    gradient_steps=GRADIENT_STEPS, learning_rate=LEARNING_RATE, batch_size=BATCH_SIZE,
+                    target_update_interval=TARGET_UPDATE_INTERVAL, exploration_fraction=EXPLORATION_FRACTION,
+                    exploration_initial_eps=EXPLORATION_INITIAL_EPS, exploration_final_eps=EXPLORATION_FINAL_EPS)
 
     # Clear all unused checkpoints
     if last_modified_checkpoint_file_mtime:
@@ -67,40 +71,20 @@ def _load_latest_model(training_env):
     return model
 
 
-def _update_model_parameters(model):
-    # DQN specific
-    model.gamma = 0.99  # Discount factor
-
-    # Model Training
-    model.train_freq = 5  # minimum number of env time steps between model training
-    model.n_episodes_rollout = -1  # minimum number of episodes between model training
-    model.gradient_steps = 1  # number of gradient steps to execute. -1 matches the number of steps in the rollout
-    model.learning_rate = 0.001  # learning rate
-
-    # Target network syncing
-    model.target_update_interval = 20000  # number of env time steps between target network updates
-
-    # Exploration
-    model.exploration_fraction = 0.75  # fraction of entire training period over which the exploration rate is reduced
-    model.exploration_initial_eps = 1.0  # initial value of random action probability
-    model.exploration_final_eps = 0.1  # final value of random action probability
-
-
 # TODO: normalize rewards https://stable-baselines3.readthedocs.io/en/master/guide/examples.html#pybullet-normalizing-input-features
 def main():
     training_env = Monitor(FlattenObservation(DiscreteToContinuousDictActionWrapper(
         gym.make(GYM_ID, key_position=KEY_POSITION, key_orientation=KEY_ORIENTATION,
                  max_steps=MAX_STEPS_PER_EPISODE, enable_render=False))))
 
-    evaluation_env = FlattenObservation(DiscreteToContinuousDictActionWrapper(
-        gym.make(GYM_ID, key_position=KEY_POSITION, key_orientation=KEY_ORIENTATION,
-                 max_steps=MAX_STEPS_PER_EPISODE, enable_render=False)))
+    # evaluation_env = FlattenObservation(DiscreteToContinuousDictActionWrapper(
+    #     gym.make(GYM_ID, key_position=KEY_POSITION, key_orientation=KEY_ORIENTATION,
+    #              max_steps=MAX_STEPS_PER_EPISODE, enable_render=False)))
 
     # TODO: add tensorboard logs for episode reward, mean episode reward and mean action reward
     model = _load_latest_model(training_env=training_env)
-    _update_model_parameters(model)
 
-    checkpoint_callback = CheckpointCallback(save_freq=ESTIMATED_STEPS_PER_MIN_1080TI * 10,
+    checkpoint_callback = CheckpointCallback(save_freq=ESTIMATED_STEPS_PER_MIN_1080TI * 5,
                                              save_path=str(SAVE_PATH / config.CHECKPOINTS_DIR),
                                              name_prefix=f'{GYM_ID}-dqn-trained-model')
 
@@ -116,7 +100,7 @@ def main():
     model.save(path=SAVE_PATH / f'{GYM_ID}-dqn-trained-model')
 
     training_env.close()
-    evaluation_env.close()
+    # evaluation_env.close()
 
 
 if __name__ == '__main__':
@@ -127,13 +111,35 @@ if __name__ == '__main__':
 
     # Training params
     MAX_SIM_SECONDS_PER_EPISODE = 10
-    DESIRED_TRAINING_TIME_HOURS = 24
+    DESIRED_TRAINING_TIME_HOURS = 0.5
 
     # System params
     ESTIMATED_STEPS_PER_SECOND_1080TI = 600
 
     # Other params
-    SAVE_PATH = config.DQN_BASE_SAVE_PATH
+    # SAVE_PATH = config.DQN_BASE_SAVE_PATH
+    SAVE_PATH = (config.MODELS_DIR_PATH / 'DQN_3').resolve(strict=True)
+
+    '''
+    New Model Params
+    '''
+    # DQN specific
+    GAMMA = 0.99  # Discount factor
+
+    # Model Training
+    TRAIN_FREQ = 1  # minimum number of env time steps between model training
+    N_EPISODES_ROLLOUT = -1  # minimum number of episodes between model training
+    GRADIENT_STEPS = -1  # number of gradient steps to execute. -1 matches the number of steps in the rollout
+    LEARNING_RATE = 0.0001  # learning rate
+    BATCH_SIZE = 32
+
+    # Target network syncing
+    TARGET_UPDATE_INTERVAL = 10000  # number of env time steps between target network updates
+
+    # Exploration
+    EXPLORATION_FRACTION = 0.3  # fraction of entire training period over which the exploration rate is reduced
+    EXPLORATION_INITIAL_EPS = 1.0  # initial value of random action probability
+    EXPLORATION_FINAL_EPS = 0.3  # final value of random action probability
 
     '''
     Calculate max sim steps per episode from desired max episode sim time

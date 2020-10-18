@@ -134,6 +134,8 @@ class UWRTArmEnv(gym.Env):
             },
             'goal': {
                 'distance_to_target': 0,
+                'previous_distance_to_target': 0,
+                'distance_moved_towards_target': 0,
                 'orientation_difference': [0, 0, 0, 0],
             },
             'arm': {
@@ -313,7 +315,11 @@ class UWRTArmEnv(gym.Env):
                                                                     self.observation['goal']['key_pose_world_frame'][
                                                                         'orientation']), dtype=np.float32)
 
+        self.info['goal']['previous_distance_to_target'] = self.info['goal']['distance_to_target']
         self.info['goal']['distance_to_target'] = distance_to_target
+        self.info['goal']['distance_moved_towards_target'] = self.info['goal']['previous_distance_to_target'] - \
+                                                             self.info['goal']['distance_to_target']
+
         self.info['goal']['orientation_difference'] = difference_quaternion
 
         if reset:
@@ -338,9 +344,17 @@ class UWRTArmEnv(gym.Env):
 
     def __calculate_reward(self):
         percent_time_used = self.info['sim']['steps_executed'] / self.info['sim']['max_steps']
-        percent_distance_remaining = self.info['goal']['distance_to_target'] / \
-                                     self.observation['goal']['initial_distance_to_target']
-        reward = (1 - percent_time_used - percent_distance_remaining) * UWRTArmEnv.REWARD_MAX / 2
+        # percent_distance_remaining = self.info['goal']['distance_to_target'] / \
+        #                              self.observation['goal']['initial_distance_to_target']
+
+        # TODO: scale based off max speed to normalize
+        # TODO: investigate weird values
+        distance_moved = self.info['goal']['distance_moved_towards_target'] / self.observation['goal']['initial_distance_to_target']
+
+        distance_weight = 1
+        time_weight = 1 - distance_weight
+
+        reward = distance_moved * UWRTArmEnv.REWARD_MAX / 2
 
         if self.info['goal']['distance_to_target'] < UWRTArmEnv.GOAL_POSITION_DISTANCE_THRESHOLD:
             self.info['sim']['end_condition'] = 'Key Reached'
@@ -352,7 +366,7 @@ class UWRTArmEnv(gym.Env):
         elif self.info['sim']['steps_executed'] >= self.info['sim']['max_steps']:
             self.info['sim']['end_condition'] = 'Max Sim Steps Executed'
             done = True
-            reward -= UWRTArmEnv.REWARD_MAX / 2
+            # reward -= UWRTArmEnv.REWARD_MAX / 2
         else:
             done = False
 
