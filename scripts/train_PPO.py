@@ -12,11 +12,11 @@ import numpy as np
 from gym.wrappers import FlattenObservation
 from gym_uwrt_arm.wrappers.discrete_to_continuous_dict_action_wrapper import DiscreteToContinuousDictActionWrapper
 
-from stable_baselines3 import DQN
+from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CallbackList, CheckpointCallback, BaseCallback
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines3.common.monitor import Monitor, load_results
-from stable_baselines3.dqn import MlpPolicy
+from stable_baselines3.ppo import MlpPolicy
 
 import config
 
@@ -91,56 +91,25 @@ def _load_latest_model(training_env):
     saved_model_file_mtime = None
     last_modified_checkpoint_file_mtime = None
 
-    saved_model_file_path = SAVE_PATH / f'{GYM_ID}-dqn-trained-model.zip'
+    saved_model_file_path = SAVE_PATH / f'{GYM_ID}-ppo-trained-model.zip'
     if saved_model_file_path.is_file():
         saved_model_file_mtime = os.path.getmtime(saved_model_file_path)
 
     checkpoints_dir = SAVE_PATH / config.CHECKPOINTS_DIR
     if checkpoints_dir.is_dir():
-        checkpoint_files = glob.glob(f'{checkpoints_dir}/{GYM_ID}-dqn-trained-model_*_steps.zip')
+        checkpoint_files = glob.glob(f'{checkpoints_dir}/{GYM_ID}-ppo-trained-model_*_steps.zip')
 
         if checkpoint_files:
             checkpoint_files.sort(key=os.path.getmtime)
             last_modified_checkpoint_file_path = checkpoint_files[-1]
             last_modified_checkpoint_file_mtime = os.path.getmtime(last_modified_checkpoint_file_path)
 
-    # if saved_model_file_mtime and last_modified_checkpoint_file_mtime:
-    #     if saved_model_file_mtime >= last_modified_checkpoint_file_mtime:
-    #         choice = 'saved_model'
-    #     else:
-    #         choice = 'saved_checkpoint'
-    # elif saved_model_file_mtime:
-    #     choice = 'saved_model'
-    # elif last_modified_checkpoint_file_mtime:
-    #     choice = 'saved_checkpoint'
-    # else:
-    #     choice = 'new_model'
-    #
-    # if choice == 'saved_model':
-    #     print(f'Loading Saved Model from {saved_model_file_path}')
-    #     model = DQN.load(path=saved_model_file_path, env=training_env, verbose=1,
-    #                      tensorboard_log=str(SAVE_PATH / config.TENSORBOARD_LOG_DIR))
-    # elif choice == 'saved_checkpoint':
-    #     print(f'Loading Checkpoint from {last_modified_checkpoint_file_path}')
-    #     model = DQN.load(path=last_modified_checkpoint_file_path, env=training_env, verbose=1,
-    #                      tensorboard_log=str(SAVE_PATH / config.TENSORBOARD_LOG_DIR))
-    # else:
-    #     print('Could not find saved models. Creating new model!')
-    #     model = DQN(MlpPolicy, env=training_env, verbose=1, tensorboard_log=str(SAVE_PATH / config.TENSORBOARD_LOG_DIR),
-    #                 gamma=GAMMA, train_freq=TRAIN_FREQ, n_episodes_rollout=N_EPISODES_ROLLOUT,
-    #                 gradient_steps=GRADIENT_STEPS, learning_rate=LEARNING_RATE, batch_size=BATCH_SIZE,
-    #                 target_update_interval=TARGET_UPDATE_INTERVAL, exploration_fraction=EXPLORATION_FRACTION,
-    #                 exploration_initial_eps=EXPLORATION_INITIAL_EPS, exploration_final_eps=EXPLORATION_FINAL_EPS)
-
     ################################################
     # TODO (ak): Don't load any checkpoint or model
     ################################################
     print('Training from Scratch!')
-    model = DQN(MlpPolicy, env=training_env, verbose=1, tensorboard_log=str(SAVE_PATH / config.TENSORBOARD_LOG_DIR),
-                gamma=GAMMA, train_freq=TRAIN_FREQ, n_episodes_rollout=N_EPISODES_ROLLOUT,
-                gradient_steps=GRADIENT_STEPS, learning_rate=LEARNING_RATE, batch_size=BATCH_SIZE,
-                target_update_interval=TARGET_UPDATE_INTERVAL, exploration_fraction=EXPLORATION_FRACTION,
-                exploration_initial_eps=EXPLORATION_INITIAL_EPS, exploration_final_eps=EXPLORATION_FINAL_EPS)
+    model = PPO(MlpPolicy, env=training_env, verbose=1, tensorboard_log=str(SAVE_PATH / config.TENSORBOARD_LOG_DIR),
+                learning_rate=LEARNING_RATE, batch_size=BATCH_SIZE, gamma=GAMMA)
 
     # Clear all unused checkpoints
     if last_modified_checkpoint_file_mtime:
@@ -159,20 +128,31 @@ def main(args):
 
     if args.vecnormalize:
         print("Normalizing Input Obs and Rewards!")
+        # training_env = DummyVecEnv([lambda:
+        #                             Monitor(FlattenObservation(DiscreteToContinuousDictActionWrapper(
+        #                                     gym.make(GYM_ID, key_position=KEY_POSITION, key_orientation=KEY_ORIENTATION,
+        #                                     max_steps=MAX_STEPS_PER_EPISODE, enable_render=False))),
+        #                             filename=str(SAVE_PATH))])
+
         training_env = DummyVecEnv([lambda:
-                                    Monitor(FlattenObservation(DiscreteToContinuousDictActionWrapper(
+                                    Monitor(FlattenObservation(
                                             gym.make(GYM_ID, key_position=KEY_POSITION, key_orientation=KEY_ORIENTATION,
-                                                max_steps=MAX_STEPS_PER_EPISODE, enable_render=False))),
-                                                    filename = str(SAVE_PATH))])
+                                            max_steps=MAX_STEPS_PER_EPISODE, enable_render=False)),
+                                    filename=str(SAVE_PATH))])
 
         # Automatically normalize the input features and reward
         training_env = VecNormalize(training_env, norm_obs=True, norm_reward=True)
 
     else:
-        training_env = Monitor(FlattenObservation(DiscreteToContinuousDictActionWrapper(
+        # training_env = Monitor(FlattenObservation(DiscreteToContinuousDictActionWrapper(
+        #                     gym.make(GYM_ID, key_position=KEY_POSITION, key_orientation=KEY_ORIENTATION,
+        #                     max_steps=MAX_STEPS_PER_EPISODE, enable_render=False))),
+        #                 filename=str(SAVE_PATH))
+
+        training_env = Monitor(FlattenObservation(
                             gym.make(GYM_ID, key_position=KEY_POSITION, key_orientation=KEY_ORIENTATION,
-                                     max_steps=MAX_STEPS_PER_EPISODE, enable_render=False))),
-                                        filename=str(SAVE_PATH)) # TODO (ak): log monitor.csv to tensorboard folder
+                            max_steps=MAX_STEPS_PER_EPISODE, enable_render=False)),
+                        filename=str(SAVE_PATH))
 
     #################
     #################
@@ -185,7 +165,7 @@ def main(args):
 
     checkpoint_callback = CheckpointCallback(save_freq=ESTIMATED_STEPS_PER_MIN_1080TI * 5,
                                              save_path=str(SAVE_PATH / config.CHECKPOINTS_DIR),
-                                             name_prefix=f'{GYM_ID}-dqn-trained-model')
+                                             name_prefix=f'{GYM_ID}-ppo-trained-model')
 
     # TODO: tensorboard not getting updated when evalcallback is used
     # evaluation_callback = EvalCallback(eval_env=evaluation_env,
@@ -196,14 +176,14 @@ def main(args):
     custom_callback = TensorboardCallback(monitor_log_dir=str(SAVE_PATH), save_best_model_path=str(SAVE_PATH),
                                             check_freq=1000, verbose=0)
 
-    dqn_callbacks = CallbackList([checkpoint_callback, custom_callback])
+    ppo_callbacks = CallbackList([checkpoint_callback, custom_callback])
 
     ###################
     ###################
 
-    model.learn(total_timesteps=TOTAL_TRAINING_ENV_STEPS, callback=dqn_callbacks)
+    model.learn(total_timesteps=int(TOTAL_TRAINING_ENV_STEPS), callback=ppo_callbacks)
     # TODO: autosave on KEYBOARD_INTERRUPT
-    model.save(path=SAVE_PATH / f'{GYM_ID}-dqn-trained-model')
+    model.save(path=SAVE_PATH / f'{GYM_ID}-ppo-trained-model')
 
     #################
     #################
@@ -241,7 +221,7 @@ if __name__ == '__main__':
 
     # Other params
     # SAVE_PATH = config.DQN_BASE_SAVE_PATH
-    SAVE_PATH = (config.MODELS_DIR_PATH / 'DQN_5').resolve(strict=True)
+    SAVE_PATH = (config.MODELS_DIR_PATH / 'PPO_1').resolve(strict=True)
 
     '''
     New Model Params
@@ -250,19 +230,8 @@ if __name__ == '__main__':
     GAMMA = 0.99  # Discount factor
 
     # Model Training
-    TRAIN_FREQ = 1  # minimum number of env time steps between model training
-    N_EPISODES_ROLLOUT = -1  # minimum number of episodes between model training
-    GRADIENT_STEPS = -1  # number of gradient steps to execute. -1 matches the number of steps in the rollout
     LEARNING_RATE = 0.0001  # learning rate
     BATCH_SIZE = 32
-
-    # Target network syncing
-    TARGET_UPDATE_INTERVAL = 1000  # number of env time steps between target network updates
-
-    # Exploration
-    EXPLORATION_FRACTION = 0.3  # fraction of entire training period over which the exploration rate is reduced
-    EXPLORATION_INITIAL_EPS = 1.0  # initial value of random action probability
-    EXPLORATION_FINAL_EPS = 0.3  # final value of random action probability
 
     '''
     Calculate max sim steps per episode from desired max episode sim time

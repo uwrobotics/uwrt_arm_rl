@@ -6,7 +6,7 @@ import argparse
 import gym
 import numpy as np
 from gym.wrappers import FlattenObservation
-from stable_baselines3 import DQN
+from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.vec_env import VecEnv
@@ -29,13 +29,13 @@ def _load_latest_model(env):
     saved_model_file_mtime = None
     last_modified_checkpoint_file_mtime = None
 
-    saved_model_file_path = SAVE_PATH / f'{GYM_ID}-dqn-trained-model.zip'
+    saved_model_file_path = SAVE_PATH / f'{GYM_ID}-ppo-trained-model.zip'
     if saved_model_file_path.is_file():
         saved_model_file_mtime = os.path.getmtime(saved_model_file_path)
 
     checkpoints_dir = SAVE_PATH / config.CHECKPOINTS_DIR
     if checkpoints_dir.is_dir():
-        checkpoint_files = glob.glob(f'{checkpoints_dir}/{GYM_ID}-dqn-trained-model_*_steps.zip')
+        checkpoint_files = glob.glob(f'{checkpoints_dir}/{GYM_ID}-ppo-trained-model_*_steps.zip')
 
         if checkpoint_files:
             checkpoint_files.sort(key=os.path.getmtime)
@@ -56,10 +56,10 @@ def _load_latest_model(env):
 
     if choice == 'saved_model':
         print(f'Loading Saved Model from {saved_model_file_path}')
-        model = DQN.load(path=saved_model_file_path, env=env, verbose=1)
+        model = PPO.load(path=saved_model_file_path, env=env, verbose=1)
     elif choice == 'saved_checkpoint':
         print(f'Loading Checkpoint from {last_modified_checkpoint_file_path}')
-        model = DQN.load(path=last_modified_checkpoint_file_path, env=env, verbose=1)
+        model = PPO.load(path=last_modified_checkpoint_file_path, env=env, verbose=1)
 
     return model
 
@@ -71,9 +71,9 @@ def main(args):
 
     if args.vecnormalize:
         print("Evaluating with Vec Normalize!")
-        evaluation_env = DummyVecEnv([lambda: FlattenObservation(DiscreteToContinuousDictActionWrapper(
+        evaluation_env = DummyVecEnv([lambda: FlattenObservation(
                                                 gym.make(GYM_ID, key_position=KEY_POSITION, key_orientation=KEY_ORIENTATION,
-                                                    max_steps=MAX_STEPS_PER_EPISODE, enable_render=True)))])
+                                                max_steps=MAX_STEPS_PER_EPISODE, enable_render=True))])
 
         saved_vecenv_file_path = (SAVE_PATH / config.STATISTICS_LOG_DIR / 'vec_normalize.pkl')
         assert saved_vecenv_file_path.is_file(), "Do not have a save stats file .."
@@ -84,9 +84,9 @@ def main(args):
         evaluation_env.norm_reward = False
 
     else:
-        evaluation_env = FlattenObservation(DiscreteToContinuousDictActionWrapper(
+        evaluation_env = FlattenObservation(
                                 gym.make(GYM_ID, key_position=KEY_POSITION, key_orientation=KEY_ORIENTATION,
-                                    max_steps=MAX_STEPS_PER_EPISODE, enable_render=True)))
+                                max_steps=MAX_STEPS_PER_EPISODE, enable_render=True))
 
     model = _load_latest_model(evaluation_env)
 
@@ -127,7 +127,7 @@ if __name__ == '__main__':
 
     # Other params
     # SAVE_PATH = config.DQN_BASE_SAVE_PATH
-    SAVE_PATH = (config.MODELS_DIR_PATH / 'DQN_5').resolve(strict=True)
+    SAVE_PATH = (config.MODELS_DIR_PATH / 'PPO_1').resolve(strict=True)
 
     '''
     Calculate max sim steps per episode from desired max episode sim time

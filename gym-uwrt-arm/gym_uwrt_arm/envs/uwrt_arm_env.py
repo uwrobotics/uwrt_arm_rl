@@ -12,6 +12,8 @@ import requests
 from gym import spaces
 from urdfpy import URDF
 
+from scipy.spatial.transform import Rotation as R
+
 
 class UWRTArmEnv(gym.Env):
     metadata = {'render.modes': ['human']}
@@ -31,8 +33,7 @@ class UWRTArmEnv(gym.Env):
 
     @dataclass(frozen=True)
     class InitOptions:
-        __slots__ = ['key_position', 'key_orientation', 'sim_step_duration', 'max_steps', 'enable_render',
-                     'tmp_dir']
+        __slots__ = ['key_position', 'key_orientation', 'sim_step_duration', 'max_steps', 'enable_render', 'tmp_dir']
         key_position: np.ndarray
         key_orientation: np.ndarray
 
@@ -102,10 +103,13 @@ class UWRTArmEnv(gym.Env):
             }),
         })
 
-        self.action_space = spaces.Dict({
-            'joint_velocity_commands': spaces.Box(low=np.full(num_joints, -np.inf), high=np.full(num_joints, np.inf),
-                                                  shape=(num_joints,), dtype=np.float32),
-        })
+        # TODO (ak): PPO doesn't accept Dict space so I changed to Box Space to get going
+        self.action_space = spaces.Box(low=np.full(num_joints, -np.inf), high=np.full(num_joints, np.inf),
+                                                  shape=(num_joints,), dtype=np.float32)
+        # self.action_space = spaces.Dict({
+        #     'joint_velocity_commands': spaces.Box(low=np.full(num_joints, -np.inf), high=np.full(num_joints, np.inf),
+        #                                           shape=(num_joints,), dtype=np.float32),
+        # })
 
         self.observation = {
             'goal': {
@@ -218,14 +222,36 @@ class UWRTArmEnv(gym.Env):
 
     # TODO: Spawn a more accurate key
     def __spawn_key(self):
+
+        #################################
+        # TODO (AK): Randomize keyboard
+        #################################
+        self.keyboard_position = np.array([np.random.uniform(0.625, 0.675),
+                                              np.random.uniform(-0.30, 0.30),
+                                              np.random.uniform(0.65, 0.675)])
+        self.keyboard_orientation = np.array([0, 0, 0, 1])
+        self.py_bullet_info.key_uid = pb.loadURDF(str(Path(pybullet_data.getDataPath()) / "cube_small.urdf"),
+                                                  basePosition=self.keyboard_position,
+                                                  baseOrientation=self.keyboard_orientation,
+                                                  useFixedBase=True)
+
+        self.observation = {
+            'goal': {
+                'key_pose_world_frame': {
+                    'position': self.keyboard_position,
+                    'orientation': self.keyboard_orientation,
+                }
+            }
+        }
+
         # Currently, there is only a single key represented as a cube
         # TODO: when this spawns a full keyboard (and the backboard of the equipment servicing unit) we need to make sure its orientation relative to the arm is reachable
-        self.py_bullet_info.key_uid = pb.loadURDF(str(Path(pybullet_data.getDataPath()) / "cube_small.urdf"),
-                                                  basePosition=self.observation['goal']['key_pose_world_frame'][
-                                                      'position'],
-                                                  baseOrientation=self.observation['goal']['key_pose_world_frame'][
-                                                      'orientation'],
-                                                  useFixedBase=True)
+        # self.py_bullet_info.key_uid = pb.loadURDF(str(Path(pybullet_data.getDataPath()) / "cube_small.urdf"),
+        #                                           basePosition=self.observation['goal']['key_pose_world_frame'][
+        #                                               'position'],
+        #                                           baseOrientation=self.observation['goal']['key_pose_world_frame'][
+        #                                               'orientation'],
+        #                                           useFixedBase=True)
 
     def __get_claw_link_pose_from_allen_key_tip_pose(self, allen_key_tip_position_world_frame,
                                                      allen_key_tip_orientation_world_frame):
@@ -284,6 +310,15 @@ class UWRTArmEnv(gym.Env):
             claw_link_position_world_frame, claw_link_orientation_world_frame,
             allen_key_tip_position_link_frame, allen_key_tip_orientation_link_frame)
 
+        # rotation
+        # current_rotation_matrix = R.from_quat(
+        #     [claw_link_orientation_world_frame[0], claw_link_orientation_world_frame[1],
+        #      claw_link_orientation_world_frame[2], claw_link_orientation_world_frame[3]]).as_matrix()
+        # # transformation
+        # current_allen_key_transformation = current_rotation_matrix @ \
+        #                                    np.asarray(allen_key_tip_position_visual_frame)[np.newaxis].T
+        # test = claw_link_position_world_frame + np.squeeze(current_allen_key_transformation.T)
+
         return allen_key_tip_position_world_frame, allen_key_tip_orientation_world_frame
 
     def __update_observation_and_info(self, reset=False):
@@ -333,10 +368,15 @@ class UWRTArmEnv(gym.Env):
             self.info['sim']['seconds_executed'] += self.info['sim']['step_duration']
 
     def __execute_action(self, action):
+        # TODO (ak): PPO doesn't accept Dict space so I changed to Box Space to get going
         pb.setJointMotorControlArray(bodyUniqueId=self.py_bullet_info.arm_uid,
                                      jointIndices=range(0, self.info['arm']['num_joints']),
                                      controlMode=pb.VELOCITY_CONTROL,
-                                     targetVelocities=action['joint_velocity_commands'])
+                                     targetVelocities=action)
+        # pb.setJointMotorControlArray(bodyUniqueId=self.py_bullet_info.arm_uid,
+        #                              jointIndices=range(0, self.info['arm']['num_joints']),
+        #                              controlMode=pb.VELOCITY_CONTROL,
+        #                              targetVelocities=action['joint_velocity_commands'])
 
         pb_steps_per_sim_step = int(self.info['sim']['step_duration'] / UWRTArmEnv.DEFAULT_PYBULLET_TIME_STEP)
         for pb_sim_step in range(pb_steps_per_sim_step):
@@ -344,8 +384,8 @@ class UWRTArmEnv(gym.Env):
 
     def __calculate_reward(self):
         percent_time_used = self.info['sim']['steps_executed'] / self.info['sim']['max_steps']
-        # percent_distance_remaining = self.info['goal']['distance_to_target'] / \
-        #                              self.observation['goal']['initial_distance_to_target']
+        percent_distance_remaining = self.info['goal']['distance_to_target'] / \
+                                     self.observation['goal']['initial_distance_to_target']
 
         # TODO: scale based off max speed to normalize
         # TODO: investigate weird values
@@ -354,7 +394,9 @@ class UWRTArmEnv(gym.Env):
         distance_weight = 1
         time_weight = 1 - distance_weight
 
-        reward = distance_moved * UWRTArmEnv.REWARD_MAX / 2
+        # TODO (ak): reward function
+        # reward = distance_moved * UWRTArmEnv.REWARD_MAX / 2
+        reward = (1 - percent_distance_remaining) * UWRTArmEnv.REWARD_MAX / 2
 
         if self.info['goal']['distance_to_target'] < UWRTArmEnv.GOAL_POSITION_DISTANCE_THRESHOLD:
             self.info['sim']['end_condition'] = 'Key Reached'
